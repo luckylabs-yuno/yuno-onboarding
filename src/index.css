@@ -1,0 +1,286 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Yuno Dark Theme CSS Variables */
+:root {
+  /* Brand Colors */
+  --yuno-blue-primary: #2563eb;
+  --yuno-cyan-primary: #06b6d4;
+  --yuno-gradient-main: linear-gradient(to right, #2563eb, #06b6d4);
+  --yuno-gradient-text: linear-gradient(135deg, #60a5fa, #22d3ee);
+
+  /* Dark Theme Backgrounds */
+  --yuno-bg-primary: #111827;
+  --yuno-bg-secondary: #1f2937;
+  --yuno-bg-tertiary: #0f172a;
+
+  /* Glass Effects */
+  --yuno-glass-bg: rgba(31, 41, 55, 0.8);
+  --yuno-glass-border: rgba(75, 85, 99, 0.3);
+  --yuno-glass-blur: blur(20px);
+
+  /* Text Colors */
+  --yuno-text-primary: #ffffff;
+  --yuno-text-secondary: #e5e7eb;
+  --yuno-text-muted: #9ca3af;
+  --yuno-blue-light: #60a5fa;
+  --yuno-cyan-light: #22d3ee;
+  --yuno-error-primary: #ef4444;
+  --yuno-error-light: #f87171;
+  --yuno-success-primary: #10b981;
+  --yuno-success-light: #34d399;
+  --yuno-warning-primary: #f59e0b;
+  --yuno-warning-light: #fbbf24;
+}
+
+/* Base Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-yuno-bg-primary text-yuno-text-primary font-sans antialiased min-h-screen;
+  background-image: var(--yuno-gradient-hero);
+  position: relative;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  text-rendering: optimizeLegibility;
+}
+
+input, button, textarea, select {
+  @apply outline-none;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-yuno-bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-yuno-blue-primary rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-yuno-blue-light;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(75, 85, 99, 0.3);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(37, 99, 235, 0.6);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.8);
+}
+
+/* Components */
+@layer components {
+  .yuno-glass {
+    background: var(--yuno-glass-bg);
+    backdrop-filter: var(--yuno-glass-blur);
+    border: 1px solid var(--yuno-glass-border);
+    @apply shadow-yuno-glass;
+  }
+  .yuno-glass:hover {
+    @apply bg-yuno-bg-primary/90 border-gray-500/50 shadow-yuno-glass-hover;
+  }
+
+  .yuno-btn-primary {
+    @apply bg-yuno-gradient-main text-white font-semibold py-3 px-6 rounded-xl shadow-yuno-primary;
+    @apply hover:bg-yuno-gradient-hover transform hover:scale-105 transition-all duration-200;
+    @apply focus:ring-2 focus:ring-yuno-blue-primary/50 focus:ring-offset-2 focus:ring-offset-yuno-bg-primary;
+    min-height: 56px;
+    background: var(--yuno-gradient-main);
+  }
+  .yuno-btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8, #0891b2);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3);
+  }
+
+  .yuno-btn-secondary {
+    @apply bg-gray-500/30 text-white font-semibold py-3 px-6 rounded-xl border border-gray-400/30;
+    @apply hover:bg-gray-600/40 backdrop-blur-md transition-all duration-200;
+    @apply focus:ring-2 focus:ring-gray-400/50 focus:ring-offset-2 focus:ring-offset-yuno-bg-primary;
+  }
+  .yuno-btn-secondary:hover {
+    background: rgba(75, 85, 99, 0.4);
+    border-color: rgba(156, 163, 175, 0.5);
+  }
+
+  .yuno-btn-ghost {
+    @apply bg-transparent text-yuno-text-muted hover:text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+
+  .yuno-input {
+    @apply w-full px-4 py-3 bg-yuno-bg-secondary/80 backdrop-blur-yuno border border-gray-600/30 rounded-xl text-white placeholder-yuno-text-muted;
+    @apply focus:outline-none focus:ring-2 focus:ring-yuno-blue-primary focus:border-yuno-blue-primary;
+    @apply transition-all duration-200 text-base;
+    min-height: 56px;
+  }
+  .yuno-input:focus {
+    @apply shadow-lg shadow-yuno-blue-primary/25;
+  }
+
+  .yuno-card {
+    @apply yuno-glass rounded-2xl p-8 animate-fade-in;
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+  .yuno-card:hover {
+    border-color: rgba(107, 114, 128, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(37, 99, 235, 0.1);
+  }
+  .yuno-card-hover {
+    @apply hover:bg-yuno-bg-secondary/90 hover:border-yuno-text-muted/50 hover:shadow-yuno-glass-hover transition-all duration-300;
+  }
+
+  .yuno-step-active {
+    @apply bg-yuno-gradient-main text-white shadow-yuno-primary;
+    animation: pulse-glow 2s ease-in-out infinite;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  }
+  .yuno-step-completed {
+    @apply bg-yuno-success-primary text-white;
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+  .yuno-step-inactive {
+    @apply bg-gray-600/30 text-gray-400 border border-gray-500/30;
+  }
+
+  .yuno-gradient-text {
+    @apply bg-clip-text text-transparent;
+    background: var(--yuno-gradient-text);
+  }
+
+  .yuno-spinner {
+    @apply inline-block animate-spin rounded-full border-2 border-solid border-current border-r-transparent;
+    border-top-color: var(--yuno-blue-primary);
+  }
+}
+
+/* Utilities */
+@layer utilities {
+  .yuno-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+    50% { box-shadow: 0 4px 20px rgba(37, 99, 235, 0.6); }
+  }
+
+  .yuno-particles {
+    position: relative; background-attachment: fixed; background-size: cover; background-repeat: no-repeat;
+  }
+  .yuno-particles::before {
+    content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #111827 0%, #1e293b 50%, #1e3a8a 100%);
+    z-index: -2; pointer-events: none;
+  }
+
+  .backdrop-blur-yuno {
+    backdrop-filter: var(--yuno-glass-blur);
+  }
+
+  .text-gradient-yuno {
+    @apply bg-yuno-gradient-main bg-clip-text text-transparent;
+  }
+
+  .border-gradient-yuno {
+    border-image: var(--yuno-gradient-main) 1;
+  }
+}
+
+/* Additional Styles */
+.focus-yuno:focus {
+  outline: 2px solid var(--yuno-blue-primary);
+  outline-offset: 2px;
+}
+
+.focus-visible:focus {
+  outline: 2px solid var(--yuno-blue-primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--yuno-blue-primary);
+  color: white;
+}
+
+.yuno-file-upload {
+  @apply border-2 border-dashed border-gray-600/30 rounded-xl p-8 text-center transition-all duration-200 cursor-pointer hover:border-yuno-blue-primary/50;
+}
+.yuno-file-upload.dragover {
+  @apply border-yuno-blue-primary bg-yuno-blue-primary/10;
+}
+
+.yuno-step-indicator {
+  @apply flex items-center justify-between w-full max-w-4xl mx-auto;
+}
+.yuno-step {
+  @apply flex items-center space-x-3;
+}
+.yuno-step-number {
+  @apply w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300;
+}
+.yuno-step-number.completed {
+  @apply bg-yuno-success-primary text-white;
+}
+.yuno-step-number.current {
+  @apply bg-yuno-blue-primary text-white;
+}
+.yuno-step-number.pending {
+  @apply bg-gray-700 text-gray-400;
+}
+.yuno-step-line {
+  @apply flex-1 h-0.5 mx-4 transition-all duration-300;
+}
+.yuno-step-line.completed {
+  @apply bg-yuno-success-primary;
+}
+.yuno-step-line.pending {
+  @apply bg-gray-700;
+}
+
+.yuno-otp-input {
+  @apply w-12 h-12 text-center text-xl font-semibold yuno-input;
+}
+.yuno-otp-input:focus {
+  @apply scale-110;
+}
+
+.yuno-script-display {
+  @apply bg-yuno-bg-tertiary rounded-lg p-4 font-mono text-sm overflow-x-auto relative;
+}
+.yuno-script-display code {
+  @apply text-yuno-success-light;
+}
+
+.yuno-success-message {
+  @apply bg-yuno-success-primary/10 border border-yuno-success-primary/20 text-yuno-success-light rounded-lg p-4 flex items-center space-x-3;
+}
+.yuno-error-message {
+  @apply bg-yuno-error-primary/10 border border-yuno-error-primary/20 text-yuno-error-light rounded-lg p-4 flex items-center space-x-3;
+}
