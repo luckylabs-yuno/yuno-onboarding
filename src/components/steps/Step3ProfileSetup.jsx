@@ -133,7 +133,7 @@ const Step3ProfileSetup = () => {
       console.log('🔐 Creating account with password...')
       
       // Call backend API directly - only send password (name, DOB, country are optional now)
-      const result = await apiService.completeProfile({ password: data.password }, tempToken)
+      const result = await apiService.completeSignup({ password: data.password }, tempToken)
 
       if (result.success) {
         console.log('✅ Account created successfully')
