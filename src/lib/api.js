@@ -251,7 +251,7 @@ export const apiClient = {
     console.log('📝 Uploading text content for site:', siteId)
     const accessToken = TokenManager.getAccessToken()
     
-    const response = await fetch(`${API_BASE_URL}/content/upload-text`, {
+    const response = await fetch(`${API_BASE_URL}/onboarding/upload-text`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
