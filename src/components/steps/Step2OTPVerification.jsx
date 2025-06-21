@@ -184,11 +184,11 @@ const Step2OTPVerification = () => {
       // Call backend API directly
       const result = await apiService.verifyOTP(state.email, otpValue)
       
-      if (result.success) {
+      if (result.valid) {
         console.log('✅ OTP verified successfully')
         
         // Store temp token for next step
-        TokenManager.setTempToken(result.data.temp_token)
+        TokenManager.setTempToken(result.session_token)
         
         // Update onboarding state
         actions.setEmailVerified(true)
