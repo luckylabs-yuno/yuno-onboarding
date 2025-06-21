@@ -340,18 +340,25 @@ export const OnboardingProvider = ({ children }) => {
         }
         
         // Upload files if provided
-        if (contentData.files && contentData.files.length > 0) {
-          for (const file of contentData.files) {
-            const fileResponse = await apiClient.uploadFile(state.siteData.siteId, file)
-            uploads.push(fileResponse)
-          }
-        }
+        //if (contentData.files && contentData.files.length > 0) {
+        //  for (const file of contentData.files) {
+        //    const fileResponse = await apiClient.uploadFile(state.siteData.siteId, file)
+        //    uploads.push(fileResponse)
+        //  }
+        //}
 
         // Save fallback info
-        if (contentData.fallbackInfo) {
-          await apiClient.saveFallbackInfo(state.siteData.siteId, contentData.fallbackInfo)
-        }
+        //if (contentData.fallbackInfo) {
+        //  await apiClient.saveFallbackInfo(state.siteData.siteId, contentData.fallbackInfo)
+        //}
         
+        // Just log what we're skipping
+        if (contentData.files?.length > 0) {
+          console.log('⚠️ Skipping file uploads - backend not ready')
+        }
+        if (contentData.fallbackInfo) {
+          console.log('⚠️ Skipping fallback info - backend not ready')
+        }
         dispatch({ 
           type: ACTIONS.SET_CONTENT_DATA, 
           payload: { 
