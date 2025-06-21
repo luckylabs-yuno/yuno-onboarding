@@ -1,4 +1,0 @@
-VITE_API_BASE_URL=https://api.helloyuno.com
-VITE_MOCK_API=false
-RESEND_API_KEY=re_JEygEkUt_3JPiobWBKabVXNGd49Ar8jYA
-RESEND_FROM_EMAIL=say@helloyuno.com
