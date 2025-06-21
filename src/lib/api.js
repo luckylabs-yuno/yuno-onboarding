@@ -87,6 +87,8 @@ export const apiClient = {
     return data
   },
 
+  // In your api.js - Replace the verifyOTP method with this corrected version:
+
   async verifyOTP(email, otp) {
     if (IS_MOCK_MODE) {
       console.log('🎭 MOCK: Verifying OTP', { email, otp })
@@ -103,19 +105,29 @@ export const apiClient = {
       }
     }
 
-    console.log('🔍 Verifying OTP for:', email)
+    console.log('🔍 Verifying OTP for:', email, 'OTP:', otp)
     const response = await fetch(`${API_BASE_URL}/onboarding/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp_code: otp })
     })
 
+    console.log('📡 OTP Response Status:', response.status)
+    
+    // Get the response data first
+    const data = await response.json()
+    console.log('📥 OTP Response Data:', data)
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || 'Invalid OTP')
+      // The backend returns error details in data.message
+      throw new Error(data.message || 'Invalid OTP')
     }
 
-    const data = await response.json()
+    // Check if the response indicates success
+    if (!data.success) {
+      throw new Error(data.message || 'OTP verification failed')
+    }
+
     console.log('✅ OTP verified successfully')
     
     // Return in format expected by your context
@@ -123,7 +135,7 @@ export const apiClient = {
       valid: true,
       session_token: data.data.temp_token
     }
-  },
+  }
 
   async completeSignup(passwordData, tempToken) {
     if (IS_MOCK_MODE) {
