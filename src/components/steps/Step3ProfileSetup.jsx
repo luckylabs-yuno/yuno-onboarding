@@ -139,11 +139,11 @@ const Step3ProfileSetup = () => {
         console.log('✅ Account created successfully')
         
         // Store access token for remaining steps
-        TokenManager.setAccessToken(result.data.access_token)
+        TokenManager.setAccessToken(result.access_token)
         TokenManager.clearTempToken() // Clear temp token
-        
+
         // Store user info
-        localStorage.setItem('yuno_user_id', result.data.user_id)
+        localStorage.setItem('yuno_user_id', result.user_id)
         
         // Update onboarding state
         actions.setPasswordSet(true)
