@@ -59,37 +59,35 @@ export class TokenManager {
 
 // API Client (compatible with your existing OnboardingContext)
 export const apiClient = {
-  // Auth endpoints
-  async sendOTP(email) {
-    if (IS_MOCK_MODE) {
-      console.log('🎭 MOCK: Sending OTP to', email)
-      await mockDelay(1500)
-      return {
-        success: true,
-        message: 'OTP sent successfully'
+    // Auth endpoints
+    async sendOTP(email) {
+      if (IS_MOCK_MODE) {
+        console.log('🎭 MOCK: Sending OTP to', email)
+        await mockDelay(1500)
+        return {
+          success: true,
+          message: 'OTP sent successfully'
+        }
       }
-    }
 
-    console.log('📧 Sending OTP to:', email)
-    const response = await fetch(`${API_BASE_URL}/onboarding/send-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    })
+      console.log('📧 Sending OTP to:', email)
+      const response = await fetch(`${API_BASE_URL}/onboarding/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || 'Failed to send OTP')
-    }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to send OTP')
+      }
 
-    const data = await response.json()
-    console.log('✅ OTP sent successfully')
-    return data
-  },
+      const data = await response.json()
+      console.log('✅ OTP sent successfully')
+      return data
+    },
 
-  // In your api.js - Replace the verifyOTP method with this corrected version:
-
-  async verifyOTP(email, otp) {
+    async verifyOTP(email, otp) {
     if (IS_MOCK_MODE) {
       console.log('🎭 MOCK: Verifying OTP', { email, otp })
       await mockDelay(1500)
@@ -135,7 +133,7 @@ export const apiClient = {
       valid: true,
       session_token: data.data.temp_token
     }
-  }
+  },
 
   async completeSignup(passwordData, tempToken) {
     if (IS_MOCK_MODE) {
