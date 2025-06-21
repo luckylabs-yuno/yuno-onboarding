@@ -387,13 +387,12 @@ export const apiClient = {
     console.log('🔍 Verifying widget for site:', siteId, 'URL:', pageUrl)
     const accessToken = TokenManager.getAccessToken()
     
-    const response = await fetch(`${API_BASE_URL}/sites/${siteId}/verify-widget`, {
+    const response = await fetch(`${API_BASE_URL}/onboarding/verify-widget`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`
       },
-      body: JSON.stringify({ page_url: pageUrl })
     })
 
     if (!response.ok) {

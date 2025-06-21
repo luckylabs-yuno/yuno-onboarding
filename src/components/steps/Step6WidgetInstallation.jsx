@@ -46,29 +46,35 @@ const Step6WidgetInstallation = () => {
   })
 
   const watchedPageUrl = watch('pageUrl')
-
-  // Generate widget script on component mount
+// Generate widget script on component mount
   useEffect(() => {
+    let mounted = true; // Add cleanup flag
+    
     const generateScript = async () => {
+      if (!mounted) return; // Prevent if unmounted
+      
       try {
         console.log('🎨 Generating widget script for site:', state.siteData.siteId)
         const result = await actions.generateWidget()
         
-        if (result.scriptTag) {
+        if (mounted && result.scriptTag) {
           setScriptTag(result.scriptTag)
-          console.log('✅ Widget script generated successfully')
         }
       } catch (error) {
         console.error('❌ Failed to generate widget script:', error)
-        // Fallback script tag
-        setScriptTag(`<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`)
+        if (mounted) {
+          setScriptTag(`<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`)
+        }
       }
     }
 
-    if (state.siteData.siteId) {
+    if (state.siteData.siteId && !scriptTag) { // Only run if no script exists
       generateScript()
     }
-  }, [state.siteData.siteId, actions])
+    
+    return () => { mounted = false } // Cleanup
+  }, [state.siteData.siteId]) // Remove 'actions' dependency
+
 
   const copyToClipboard = async () => {
     try {

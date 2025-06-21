@@ -248,8 +248,26 @@ export const OnboardingProvider = ({ children }) => {
       
       try {
         const response = await apiClient.verifyOTP(email, otp)
-        dispatch({ type: ACTIONS.SET_EMAIL_VERIFIED, payload: true })
-        dispatch({ type: ACTIONS.SET_TEMP_TOKEN, payload: response.session_token })
+        
+        // Check if user already exists
+        if (response.user_exists) {
+          // Skip to appropriate step based on their progress
+          dispatch({ type: ACTIONS.SET_EMAIL_VERIFIED, payload: true })
+          dispatch({ type: ACTIONS.SET_PASSWORD_SET, payload: true })
+          
+          // Check their actual progress from backend
+          if (response.site_id) {
+            dispatch({ type: ACTIONS.SET_SITE_DATA, payload: { siteId: response.site_id }})
+            dispatch({ type: ACTIONS.SET_CURRENT_STEP, payload: 5 }) // Go to content
+          } else {
+            dispatch({ type: ACTIONS.SET_CURRENT_STEP, payload: 4 }) // Go to domain
+          }
+        } else {
+          // New user flow
+          dispatch({ type: ACTIONS.SET_EMAIL_VERIFIED, payload: true })
+          dispatch({ type: ACTIONS.SET_TEMP_TOKEN, payload: response.session_token })
+        }
+        
         return response
       } catch (error) {
         dispatch({ type: ACTIONS.SET_ERROR, payload: error.message })
