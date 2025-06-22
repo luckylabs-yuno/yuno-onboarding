@@ -1,4 +1,4 @@
-// src/lib/api.js - Updated with Step 5-6 integration
+// src/lib/api.js - FIXED with correct endpoints
 
 const IS_MOCK_MODE = import.meta.env.VITE_MOCK_API === 'true' || !import.meta.env.VITE_API_BASE_URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.helloyuno.com'
@@ -38,7 +38,7 @@ export class TokenManager {
 }
 
 export const apiClient = {
-  // Auth endpoints
+  // Auth endpoints (working)
   async sendOTP(email) {
     if (IS_MOCK_MODE) {
       await mockDelay(1500)
@@ -169,7 +169,7 @@ export const apiClient = {
     return data.data
   },
 
-  // NEW: Step 5 - Content Management
+  // FIXED: Step 5 - Content Management
   async uploadText(siteId, textContent) {
     if (IS_MOCK_MODE) {
       await mockDelay(2000)
@@ -249,8 +249,8 @@ export const apiClient = {
     return await response.json()
   },
 
-  // NEW: Step 6 - Widget Management
-  async generateWidget(accessToken) {
+  // FIXED: Step 6 - Widget Management
+  async generateWidget() {
     if (IS_MOCK_MODE) {
       await mockDelay(1500)
       return {
@@ -259,6 +259,9 @@ export const apiClient = {
       }
     }
 
+    const accessToken = TokenManager.getAccessToken()
+    
+    // FIXED: Correct endpoint
     const response = await fetch(`${API_BASE_URL}/onboarding/generate-widget-script`, {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -270,6 +273,8 @@ export const apiClient = {
     }
 
     const data = await response.json()
+    
+    // FIXED: Correct response structure
     return {
       scriptTag: data.data.widget_script,
       siteId: data.data.site_id
@@ -283,6 +288,8 @@ export const apiClient = {
     }
 
     const accessToken = TokenManager.getAccessToken()
+    
+    // FIXED: Correct endpoint structure
     const response = await fetch(`${API_BASE_URL}/onboarding/verify-widget`, {
       method: 'POST',
       headers: {
@@ -301,7 +308,7 @@ export const apiClient = {
     return data.data
   },
 
-  // NEW: Resume Functionality
+  // FIXED: Resume Functionality
   async getUserState() {
     if (IS_MOCK_MODE) {
       await mockDelay(500)

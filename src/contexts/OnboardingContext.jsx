@@ -1,5 +1,5 @@
-// src/contexts/OnboardingContext.jsx - Updated with Step 5-6 and Resume Logic
-import React, { createContext, useContext, useReducer, useEffect } from 'react'
+// src/contexts/OnboardingContext.jsx - FIXED Resume Logic
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react'
 import { apiClient, TokenManager } from '../lib/api.js'
 
 const OnboardingContext = createContext()
@@ -98,46 +98,108 @@ function onboardingReducer(state, action) {
 export const OnboardingProvider = ({ children }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState)
 
-  // Load saved state and check for resume on mount
+  // FIXED: Resume functionality with correct session_data parsing
   useEffect(() => {
     const initializeState = async () => {
-      // Check for existing access token
       const accessToken = TokenManager.getAccessToken()
       
       if (accessToken) {
         try {
-          // Get user state from backend
+          console.log('🔄 Attempting to resume session...')
           const userState = await apiClient.getUserState()
           
+          console.log('📋 User state response:', userState)
+          
           if (userState.success) {
+            // FIXED: Use session_data.current_step instead of top-level current_step
+            const sessionData = userState.session_data || {}
+            const currentStep = sessionData.current_step || userState.current_step || 1
+            
+            console.log('📍 Resume Logic:', {
+              topLevelStep: userState.current_step,
+              sessionDataStep: sessionData.current_step,
+              chosenStep: currentStep,
+              siteId: sessionData.site_id,
+              domain: sessionData.domain,
+              profileCompleted: sessionData.profile_completed
+            })
+
+            // Determine step based on actual progress
+            let actualStep = currentStep
+            
+            // Override step based on completion status
+            if (sessionData.widget_verified) {
+              actualStep = 7  // Completed
+            } else if (sessionData.site_id && sessionData.content_complete) {
+              actualStep = 6  // Widget installation
+            } else if (sessionData.site_id) {
+              actualStep = 5  // Content upload
+            } else if (sessionData.profile_completed) {
+              actualStep = 4  // Domain setup
+            } else if (sessionData.otp_verified) {
+              actualStep = 3  // Profile setup
+            } else if (sessionData.otp_sent_at) {
+              actualStep = 2  // OTP verification
+            }
+
+            console.log('🎯 Final determined step:', actualStep)
+
             dispatch({ type: ACTIONS.LOAD_SAVED_STATE, payload: {
-              currentStep: userState.current_step,
+              currentStep: actualStep,
               email: userState.email,
-              isEmailVerified: true,
-              isPasswordSet: true,
+              isEmailVerified: !!sessionData.email_verified || !!sessionData.otp_verified,
+              isPasswordSet: !!sessionData.profile_completed,
               userData: {
-                userId: userState.session_data?.user_id,
+                userId: sessionData.user_id,
                 accessToken: accessToken
               },
               siteData: {
-                siteId: userState.session_data?.site_id,
-                domain: userState.session_data?.domain || userState.profile?.domain,
-                scrapingStatus: userState.session_data?.site_id ? 'completed' : 'pending'
+                siteId: sessionData.site_id,
+                domain: sessionData.domain || userState.profile?.domain,
+                scrapingStatus: sessionData.site_id ? 'completed' : 'pending'
+              },
+              contentData: {
+                contactInfo: {
+                  supportEmail: sessionData.support_email || '',
+                  companyName: sessionData.company_name || '',
+                  supportPhone: sessionData.support_phone || '',
+                  address: sessionData.address || '',
+                  supportPersonName: sessionData.support_person_name || ''
+                },
+                processingStatus: sessionData.content_complete ? 'completed' : 'pending'
+              },
+              widgetData: {
+                isVerified: !!sessionData.widget_verified,
+                scriptTag: sessionData.widget_script || ''
               }
             }})
+
+            console.log('✅ Session resumed successfully at step', actualStep)
           }
         } catch (error) {
-          console.warn('Failed to resume session:', error)
-          // Clear invalid token
+          console.warn('❌ Failed to resume session:', error)
           TokenManager.clearAccessToken()
+          
+          // Fall back to sessionStorage
+          const savedState = sessionStorage.getItem('yuno-onboarding-state')
+          if (savedState) {
+            try {
+              const parsedState = JSON.parse(savedState)
+              dispatch({ type: ACTIONS.LOAD_SAVED_STATE, payload: parsedState })
+              console.log('📱 Loaded from sessionStorage instead')
+            } catch (error) {
+              console.error('Failed to load saved state:', error)
+            }
+          }
         }
       } else {
-        // Try to load from sessionStorage
+        // No access token, try sessionStorage
         const savedState = sessionStorage.getItem('yuno-onboarding-state')
         if (savedState) {
           try {
             const parsedState = JSON.parse(savedState)
             dispatch({ type: ACTIONS.LOAD_SAVED_STATE, payload: parsedState })
+            console.log('📱 Loaded from sessionStorage (no token)')
           } catch (error) {
             console.error('Failed to load saved state:', error)
           }
@@ -162,7 +224,8 @@ export const OnboardingProvider = ({ children }) => {
     sessionStorage.setItem('yuno-onboarding-state', JSON.stringify(stateToSave))
   }, [state])
 
-  const actions = {
+  // FIXED: Use useCallback to prevent infinite loops
+  const actions = useCallback(() => ({
     setCurrentStep: (step) => {
       dispatch({ type: ACTIONS.SET_CURRENT_STEP, payload: step })
     },
@@ -237,7 +300,6 @@ export const OnboardingProvider = ({ children }) => {
       }
     },
 
-    // API integration actions
     sendOTP: async (email) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true })
       dispatch({ type: ACTIONS.CLEAR_ERROR })
@@ -331,7 +393,6 @@ export const OnboardingProvider = ({ children }) => {
       }
     },
 
-    // NEW: Step 5 Content Upload Actions
     uploadContent: async (contentData) => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true })
       dispatch({ type: ACTIONS.CLEAR_ERROR })
@@ -339,7 +400,6 @@ export const OnboardingProvider = ({ children }) => {
       try {
         const uploads = []
         
-        // Update contact info first (required)
         if (contentData.contactInfo && contentData.contactInfo.supportEmail) {
           await apiClient.updateContactInfo(state.siteData.siteId, contentData.contactInfo)
           dispatch({ type: ACTIONS.SET_CONTENT_DATA, payload: { 
@@ -347,13 +407,11 @@ export const OnboardingProvider = ({ children }) => {
           }})
         }
         
-        // Upload text content if provided
         if (contentData.textContent && contentData.textContent.trim()) {
           const textResponse = await apiClient.uploadText(state.siteData.siteId, contentData.textContent)
           uploads.push(textResponse)
         }
         
-        // Upload files if provided
         if (contentData.files && contentData.files.length > 0) {
           for (const file of contentData.files) {
             const fileResponse = await apiClient.uploadFile(state.siteData.siteId, file)
@@ -377,14 +435,12 @@ export const OnboardingProvider = ({ children }) => {
       }
     },
 
-    // NEW: Step 6 Widget Actions
     generateWidget: async () => {
       dispatch({ type: ACTIONS.SET_LOADING, payload: true })
       dispatch({ type: ACTIONS.CLEAR_ERROR })
       
       try {
-        const accessToken = TokenManager.getAccessToken()
-        const response = await apiClient.generateWidget(accessToken)
+        const response = await apiClient.generateWidget()
         dispatch({ type: ACTIONS.SET_WIDGET_DATA, payload: { 
           scriptTag: response.scriptTag
         }})
@@ -424,11 +480,11 @@ export const OnboardingProvider = ({ children }) => {
         console.error('Failed to complete onboarding:', error)
       }
     }
-  }
+  }), [state])
 
   const value = {
     state,
-    actions,
+    actions: actions(),
     canProceedToNextStep: () => {
       switch (state.currentStep) {
         case 1:

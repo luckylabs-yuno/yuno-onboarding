@@ -1,5 +1,5 @@
-// src/components/steps/Step6WidgetInstallation.jsx - Complete Backend Integration
-import React, { useState, useEffect } from 'react'
+// src/components/steps/Step6WidgetInstallation.jsx - FIXED infinite loop
+import React, { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -7,17 +7,15 @@ import { useOnboarding } from '../../contexts/OnboardingContext'
 import { Card } from '../ui/Card'
 import { Input } from '../ui/Input'
 import Button from '../ui/Button'
-import { ErrorMessage, SuccessMessage } from '../ui/ErrorMessage'
+import { ErrorMessage } from '../ui/ErrorMessage'
 import { 
   Code, 
   ArrowRight, 
   Copy, 
   CheckCircle, 
-  ExternalLink,
   Loader,
   AlertTriangle,
   Globe,
-  RefreshCw,
   Monitor,
   Smartphone
 } from 'lucide-react'
@@ -38,11 +36,12 @@ const Step6WidgetInstallation = () => {
   const [scriptTag, setScriptTag] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState('general')
   const [verificationSuccess, setVerificationSuccess] = useState(false)
+  const [hasTriedGeneration, setHasTriedGeneration] = useState(false)
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors },
     watch
   } = useForm({
     resolver: zodResolver(widgetSchema),
@@ -52,33 +51,38 @@ const Step6WidgetInstallation = () => {
     }
   })
 
-  const watchedPageUrl = watch('pageUrl')
-
-  // Generate widget script on component mount
-  useEffect(() => {
-    const generateScript = async () => {
-      if (!state.siteData.siteId || scriptTag) return
-      
-      setIsGenerating(true)
-      try {
-        console.log('🎨 Generating widget script for site:', state.siteData.siteId)
-        const result = await actions.generateWidget()
-        
-        if (result.scriptTag) {
-          setScriptTag(result.scriptTag)
-          console.log('✅ Widget script generated successfully')
-        }
-      } catch (error) {
-        console.error('❌ Failed to generate widget script:', error)
-        // Fallback script if generation fails
-        setScriptTag(`<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`)
-      } finally {
-        setIsGenerating(false)
-      }
+  // FIXED: Memoized generation function to prevent infinite loops
+  const generateScript = useCallback(async () => {
+    if (!state.siteData.siteId || scriptTag || hasTriedGeneration || isGenerating) {
+      return
     }
+    
+    setIsGenerating(true)
+    setHasTriedGeneration(true)
+    
+    try {
+      console.log('🎨 Generating widget script for site:', state.siteData.siteId)
+      const result = await actions.generateWidget()
+      
+      if (result.scriptTag) {
+        setScriptTag(result.scriptTag)
+        console.log('✅ Widget script generated successfully')
+      }
+    } catch (error) {
+      console.error('❌ Failed to generate widget script:', error)
+      // Fallback script if generation fails
+      setScriptTag(`<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`)
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [state.siteData.siteId, scriptTag, hasTriedGeneration, isGenerating, actions])
 
-    generateScript()
-  }, [state.siteData.siteId, actions, scriptTag])
+  // FIXED: Only trigger once when component mounts and has siteId
+  useEffect(() => {
+    if (state.siteData.siteId && !hasTriedGeneration) {
+      generateScript()
+    }
+  }, [state.siteData.siteId, generateScript, hasTriedGeneration])
 
   const copyToClipboard = async () => {
     try {
@@ -229,7 +233,8 @@ const Step6WidgetInstallation = () => {
     currentStep: state.currentStep,
     siteId: state.siteData.siteId,
     scriptTag: scriptTag ? 'exists' : 'not generated',
-    isValid,
+    hasTriedGeneration,
+    isGenerating,
     isVerifying,
     loading: state.loading,
     error: state.error
