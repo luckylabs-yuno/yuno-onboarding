@@ -1,8 +1,8 @@
-// src/components/steps/Step6WidgetInstallation.jsx
+// src/components/steps/Step6WidgetInstallation.jsx - Complete Backend Integration
 import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { widgetSchema } from '../../lib/validation'
+import { z } from 'zod'
 import { useOnboarding } from '../../contexts/OnboardingContext'
 import { Card } from '../ui/Card'
 import { Input } from '../ui/Input'
@@ -16,17 +16,24 @@ import {
   ExternalLink,
   Loader,
   AlertTriangle,
-  Monitor,
-  Smartphone,
   Globe,
-  Zap,
-  RefreshCw
+  RefreshCw,
+  Monitor,
+  Smartphone
 } from 'lucide-react'
+
+const widgetSchema = z.object({
+  pageUrl: z
+    .string()
+    .url('Please enter a valid URL')
+    .optional()
+    .or(z.literal(''))
+})
 
 const Step6WidgetInstallation = () => {
   const { state, actions } = useOnboarding()
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [scriptTag, setScriptTag] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState('general')
@@ -46,35 +53,32 @@ const Step6WidgetInstallation = () => {
   })
 
   const watchedPageUrl = watch('pageUrl')
-// Generate widget script on component mount
+
+  // Generate widget script on component mount
   useEffect(() => {
-    let mounted = true; // Add cleanup flag
-    
     const generateScript = async () => {
-      if (!mounted) return; // Prevent if unmounted
+      if (!state.siteData.siteId || scriptTag) return
       
+      setIsGenerating(true)
       try {
         console.log('🎨 Generating widget script for site:', state.siteData.siteId)
         const result = await actions.generateWidget()
         
-        if (mounted && result.scriptTag) {
+        if (result.scriptTag) {
           setScriptTag(result.scriptTag)
+          console.log('✅ Widget script generated successfully')
         }
       } catch (error) {
         console.error('❌ Failed to generate widget script:', error)
-        if (mounted) {
-          setScriptTag(`<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`)
-        }
+        // Fallback script if generation fails
+        setScriptTag(`<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`)
+      } finally {
+        setIsGenerating(false)
       }
     }
 
-    if (state.siteData.siteId && !scriptTag) { // Only run if no script exists
-      generateScript()
-    }
-    
-    return () => { mounted = false } // Cleanup
-  }, [state.siteData.siteId]) // Remove 'actions' dependency
-
+    generateScript()
+  }, [state.siteData.siteId, actions, scriptTag])
 
   const copyToClipboard = async () => {
     try {
@@ -108,11 +112,17 @@ const Step6WidgetInstallation = () => {
         console.log('✅ Widget verified successfully')
         setVerificationSuccess(true)
 
-        // Show success and redirect to dashboard
-        setTimeout(() => {
-          console.log('🎉 Redirecting to dashboard...')
-          window.location.href = 'https://dashboard.helloyuno.com'
-        }, 3000)
+        // Complete onboarding and redirect
+        setTimeout(async () => {
+          try {
+            await actions.completeOnboarding()
+            actions.setCurrentStep(7)
+          } catch (error) {
+            console.error('Failed to complete onboarding:', error)
+            // Still proceed to completion step
+            actions.setCurrentStep(7)
+          }
+        }, 2000)
       } else {
         actions.setError('Widget not found on the specified page. Please make sure you\'ve added the script correctly.')
       }
@@ -124,7 +134,7 @@ const Step6WidgetInstallation = () => {
     }
   }
 
-  const handleSkipVerification = () => {
+  const handleSkipVerification = async () => {
     console.log('⏭️ Skipping widget verification')
     setVerificationSuccess(true)
     
@@ -134,9 +144,15 @@ const Step6WidgetInstallation = () => {
       verificationUrl: 'skipped'
     })
 
-    setTimeout(() => {
-      window.location.href = 'https://dashboard.helloyuno.com'
-    }, 2000)
+    setTimeout(async () => {
+      try {
+        await actions.completeOnboarding()
+        actions.setCurrentStep(7)
+      } catch (error) {
+        console.error('Failed to complete onboarding:', error)
+        actions.setCurrentStep(7)
+      }
+    }, 1500)
   }
 
   const installationSteps = [
@@ -144,19 +160,22 @@ const Step6WidgetInstallation = () => {
       step: 1,
       title: "Copy Script",
       description: "Copy the widget script to your clipboard",
-      icon: Copy
+      icon: Copy,
+      completed: copied
     },
     {
       step: 2, 
       title: "Add to Website",
       description: "Paste the script in your website's <head> section",
-      icon: Code
+      icon: Code,
+      completed: copied
     },
     {
       step: 3,
       title: "Verify Installation", 
       description: "Test that your widget is working correctly",
-      icon: CheckCircle
+      icon: CheckCircle,
+      completed: verificationSuccess
     }
   ]
 
@@ -211,10 +230,83 @@ const Step6WidgetInstallation = () => {
     siteId: state.siteData.siteId,
     scriptTag: scriptTag ? 'exists' : 'not generated',
     isValid,
-    isSubmitting,
+    isVerifying,
     loading: state.loading,
     error: state.error
   })
+
+  if (verificationSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-8 yuno-particles">
+        <div className="w-full max-w-2xl">
+          <Card className="text-center space-y-6">
+            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="w-10 h-10 text-white" />
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-green-400">
+                🎉 Widget Installation Complete!
+              </h2>
+              <p className="text-yuno-text-secondary text-lg">
+                Your Yuno chatbot is now live and ready to help your visitors
+              </p>
+            </div>
+
+            <div className="bg-gray-800/50 rounded-lg p-6 space-y-4">
+              <h3 className="font-semibold text-yuno-text-secondary">What's Next?</h3>
+              
+              <div className="space-y-3 text-left">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mt-1">
+                    <span className="text-blue-400 font-semibold text-sm">1</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Access Your Dashboard</p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      Manage conversations, customize appearance, and view analytics
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mt-1">
+                    <span className="text-blue-400 font-semibold text-sm">2</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Test Your Chatbot</p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      Visit your website and start a conversation with Yuno
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mt-1">
+                    <span className="text-blue-400 font-semibold text-sm">3</span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Enjoy Your Free Trial</p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      7 days of full access to all features
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => actions.setCurrentStep(7)}
+              className="w-full text-lg py-4"
+            >
+              Complete Setup
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </Card>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8 yuno-particles">
@@ -240,265 +332,203 @@ const Step6WidgetInstallation = () => {
           </div>
         </div>
 
-        {verificationSuccess ? (
-          /* Success State */
-          <Card className="text-center space-y-6">
-            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-10 h-10 text-white" />
-            </div>
+        {/* Installation Steps */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {installationSteps.map((item, index) => {
+            const Icon = item.icon
+            const isActive = index === 0 || item.completed
+            const isCompleted = item.completed
             
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-green-400">
-                🎉 Congratulations!
-              </h2>
-              <p className="text-yuno-text-secondary text-lg">
-                Your Yuno chatbot is now live and ready to help your visitors
-              </p>
-            </div>
-
-            <div className="bg-gray-800/50 rounded-lg p-6 space-y-4">
-              <h3 className="font-semibold text-yuno-text-secondary">What's Next?</h3>
-              
-              <div className="space-y-3 text-left">
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mt-1">
-                    <span className="text-blue-400 font-semibold text-sm">1</span>
+            return (
+              <div 
+                key={item.step}
+                className={`bg-gray-800/50 backdrop-blur-lg border rounded-xl p-6 transition-all duration-300 ${
+                  isCompleted 
+                    ? 'border-green-500/50 bg-green-500/10' 
+                    : isActive 
+                      ? 'border-blue-500/50 bg-blue-500/10' 
+                      : 'border-gray-600/30'
+                }`}
+              >
+                <div className="flex items-center space-x-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    isCompleted 
+                      ? 'bg-green-500 text-white' 
+                      : isActive 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-700 text-gray-400'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      <Icon className="w-5 h-5" />
+                    )}
                   </div>
-                  <div>
-                    <p className="font-medium text-white">Access Your Dashboard</p>
-                    <p className="text-gray-400 text-sm mt-1">
-                      Visit dashboard.helloyuno.com and login with {state.email || 'your email'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mt-1">
-                    <span className="text-blue-400 font-semibold text-sm">2</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">Monitor & Customize</p>
-                    <p className="text-gray-400 text-sm mt-1">
-                      View conversations, customize appearance, and add more content
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center mt-1">
-                    <span className="text-blue-400 font-semibold text-sm">3</span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-white">Enjoy Your Free Trial</p>
-                    <p className="text-gray-400 text-sm mt-1">
-                      7 days of full access to all features
+                  <div className="flex-1">
+                    <h3 className={`font-semibold ${isCompleted ? 'text-green-400' : isActive ? 'text-blue-400' : 'text-gray-300'}`}>
+                      {item.title}
+                    </h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {item.description}
                     </p>
                   </div>
                 </div>
               </div>
+            )
+          })}
+        </div>
+
+        {/* Script Tag Card */}
+        <Card className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-white flex items-center">
+              <Code className="w-5 h-5 mr-2 text-blue-400" />
+              Your Widget Script
+            </h3>
+            
+            {isGenerating ? (
+              <div className="bg-gray-900 rounded-lg p-8 text-center">
+                <Loader className="w-8 h-8 animate-spin text-blue-400 mx-auto mb-4" />
+                <p className="text-yuno-text-muted">Generating your widget script...</p>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+                  <code className="text-green-400">
+                    {scriptTag || `<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`}
+                  </code>
+                </div>
+                
+                <button
+                  onClick={copyToClipboard}
+                  className={`absolute top-2 right-2 p-2 rounded-lg transition-all duration-200 ${
+                    copied 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {copied ? <CheckCircle className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                </button>
+              </div>
+            )}
+
+            {copied && (
+              <div className="flex items-center space-x-2 text-green-400">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm">Script copied to clipboard!</span>
+              </div>
+            )}
+          </div>
+
+          {/* Platform Instructions */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-yuno-text-secondary">
+              Installation Instructions
+            </h4>
+            
+            <div className="flex flex-wrap gap-2">
+              {platforms.map((platform) => (
+                <button
+                  key={platform.id}
+                  onClick={() => setSelectedPlatform(platform.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedPlatform === platform.id
+                      ? 'bg-yuno-blue-primary text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  {platform.name}
+                </button>
+              ))}
             </div>
 
-            <Button
-              onClick={() => window.location.href = 'https://dashboard.helloyuno.com'}
-              className="w-full text-lg py-4"
-            >
-              Go to Dashboard
-              <ExternalLink className="w-5 h-5 ml-2" />
-            </Button>
-          </Card>
-        ) : (
-          <>
-            {/* Installation Steps */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {installationSteps.map((item, index) => {
-                const Icon = item.icon
-                const isActive = index === 0 || (index === 1 && copied) || (index === 2 && copied)
-                const isCompleted = (index === 0 && copied) || (index === 1 && copied && watchedPageUrl)
-                
-                return (
-                  <div 
-                    key={item.step}
-                    className={`bg-gray-800/50 backdrop-blur-lg border rounded-xl p-6 transition-all duration-300 ${
-                      isCompleted 
-                        ? 'border-green-500/50 bg-green-500/10' 
-                        : isActive 
-                          ? 'border-blue-500/50 bg-blue-500/10' 
-                          : 'border-gray-600/30'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        isCompleted 
-                          ? 'bg-green-500 text-white' 
-                          : isActive 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-700 text-gray-400'
-                      }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="w-5 h-5" />
-                        ) : (
-                          <Icon className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className={`font-semibold ${isCompleted ? 'text-green-400' : isActive ? 'text-blue-400' : 'text-gray-300'}`}>
-                          {item.title}
-                        </h3>
-                        <p className="text-sm text-gray-400 mt-1">
-                          {item.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-600/30">
+              <ol className="space-y-2">
+                {getInstructions(selectedPlatform).map((step, index) => (
+                  <li key={index} className="text-sm text-yuno-text-muted flex items-start">
+                    <span className="inline-block w-6 h-6 bg-yuno-blue-primary/20 text-yuno-blue-primary rounded-full text-xs flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">
+                      {index + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
             </div>
+          </div>
+        </Card>
 
-            {/* Script Tag Card */}
-            <Card className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-white flex items-center">
-                  <Code className="w-5 h-5 mr-2 text-blue-400" />
-                  Your Widget Script
-                </h3>
-                
-                <div className="relative">
-                  <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                    <code className="text-green-400">
-                      {scriptTag || `<script src="https://cdn.helloyuno.com/yuno.js" site_id="${state.siteData.siteId}" defer></script>`}
-                    </code>
-                  </div>
-                  
-                  <button
-                    onClick={copyToClipboard}
-                    className={`absolute top-2 right-2 p-2 rounded-lg transition-all duration-200 ${
-                      copied 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
-                  >
-                    {copied ? <CheckCircle className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                  </button>
-                </div>
+        {/* Verification Card */}
+        <Card className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-white flex items-center">
+              <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
+              Verify Installation
+            </h3>
+            
+            <p className="text-yuno-text-muted">
+              Enter a URL where you've installed the widget to verify it's working correctly.
+            </p>
 
-                {copied && (
-                  <div className="flex items-center space-x-2 text-green-400">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="text-sm">Script copied to clipboard!</span>
-                  </div>
-                )}
-              </div>
+            <form onSubmit={handleSubmit(handleVerifyWidget)} className="space-y-4">
+              <Input
+                {...register('pageUrl')}
+                type="url"
+                label="Page URL to verify (optional)"
+                placeholder="https://www.yourwebsite.com/page-with-widget"
+                error={!!errors.pageUrl}
+                description={errors.pageUrl?.message}
+                icon={Globe}
+                disabled={isVerifying}
+              />
 
-              {/* Platform Instructions */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-yuno-text-secondary">
-                  Installation Instructions
-                </h4>
-                
-                <div className="flex flex-wrap gap-2">
-                  {platforms.map((platform) => (
-                    <button
-                      key={platform.id}
-                      onClick={() => setSelectedPlatform(platform.id)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        selectedPlatform === platform.id
-                          ? 'bg-yuno-blue-primary text-white'
-                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                      }`}
-                    >
-                      {platform.name}
-                    </button>
-                  ))}
-                </div>
+              {state.error && (
+                <ErrorMessage message={state.error} />
+              )}
 
-                <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-600/30">
-                  <ol className="space-y-2">
-                    {getInstructions(selectedPlatform).map((step, index) => (
-                      <li key={index} className="text-sm text-yuno-text-muted flex items-start">
-                        <span className="inline-block w-6 h-6 bg-yuno-blue-primary/20 text-yuno-blue-primary rounded-full text-xs flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">
-                          {index + 1}
-                        </span>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </div>
-            </Card>
-
-            {/* Verification Card */}
-            <Card className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-white flex items-center">
-                  <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
-                  Verify Installation
-                </h3>
-                
-                <p className="text-yuno-text-muted">
-                  Enter a URL where you've installed the widget to verify it's working correctly.
-                </p>
-
-                <form onSubmit={handleSubmit(handleVerifyWidget)} className="space-y-4">
-                  <Input
-                    {...register('pageUrl')}
-                    type="url"
-                    label="Page URL to verify"
-                    placeholder="https://www.yourwebsite.com/page-with-widget"
-                    error={!!errors.pageUrl}
-                    description={errors.pageUrl?.message}
-                    icon={Globe}
-                  />
-
-                  {state.error && (
-                    <ErrorMessage message={state.error} />
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  loading={isVerifying}
+                  disabled={isVerifying}
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Verifying Widget...
+                    </>
+                  ) : (
+                    <>
+                      Verify Widget Installation
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </>
                   )}
+                </Button>
 
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Button
-                      type="submit"
-                      className="flex-1"
-                      loading={isVerifying}
-                      disabled={!isValid || isVerifying}
-                    >
-                      {isVerifying ? (
-                        <>
-                          <Loader className="w-4 h-4 mr-2 animate-spin" />
-                          Verifying Widget...
-                        </>
-                      ) : (
-                        <>
-                          Verify Widget Installation
-                          <ArrowRight className="w-5 h-5 ml-2" />
-                        </>
-                      )}
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleSkipVerification}
-                      disabled={isVerifying}
-                    >
-                      Skip verification for now
-                    </Button>
-                  </div>
-                </form>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSkipVerification}
+                  disabled={isVerifying}
+                >
+                  Skip verification for now
+                </Button>
               </div>
+            </form>
+          </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-blue-400 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-blue-400 mb-1">Need help with installation?</p>
-                    <p className="text-blue-300">
-                      Check our detailed installation guides or contact support if you encounter any issues.
-                    </p>
-                  </div>
-                </div>
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="w-5 h-5 text-blue-400 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-blue-400 mb-1">Need help with installation?</p>
+                <p className="text-blue-300">
+                  Check our detailed installation guides or contact support if you encounter any issues.
+                </p>
               </div>
-            </Card>
-          </>
-        )}
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   )

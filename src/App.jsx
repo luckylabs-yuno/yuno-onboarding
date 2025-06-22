@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - Updated with Resume Logic
 import React from 'react'
 import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext'
 import StepIndicator from './components/StepIndicator'
@@ -12,7 +12,6 @@ import Step7Completion from './components/steps/Step7Completion'
 import DebugPanel from './components/DebugPanel'
 import './index.css'
 
-// Layout component with step indicator
 const OnboardingLayout = ({ children, showStepIndicator = true }) => {
   return (
     <div className="min-h-screen bg-yuno-bg-primary">
@@ -31,14 +30,12 @@ const OnboardingLayout = ({ children, showStepIndicator = true }) => {
   )
 }
 
-// Step renderer component - this is the key fix!
 const StepRenderer = () => {
   const { state } = useOnboarding()
   const { currentStep } = state
 
   console.log('🎯 StepRenderer: Rendering step', currentStep)
 
-  // Render the appropriate step based on currentStep state
   switch (currentStep) {
     case 1:
       return (
@@ -110,7 +107,6 @@ const StepRenderer = () => {
   }
 }
 
-// Error boundary component
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -164,7 +160,6 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Main App component
 const App = () => {
   return (
     <ErrorBoundary>
